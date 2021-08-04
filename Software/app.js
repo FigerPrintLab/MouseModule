@@ -8,15 +8,19 @@ const app = express();
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname + '/client')));
+app.use(express.static(path.join(__dirname, 'client')));
 
 app.get("/", function(req, res) {
-    res.sendFile(path.join(__dirname + 'index.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get("/favicon.ico", function(req, res) {
+    res.sendFile(path.join(__dirname, 'favicon.ico'));
 });
 
 app.post("/", (req, res) => {
-    //console.log("Request:");
-    //console.log(req.body);
+    res.send("communication succeeded");
+    // console.log(req.body);
     if (req.body.type === "mousedown") {
         if (req.body.buttons === 1) {
             //console.log("trigger pulse requested");
@@ -29,10 +33,9 @@ app.post("/", (req, res) => {
         //console.log("gate off requested");
         gate(false);
     } else if (req.body.type === "mousemove") {
-        //console.log("mouse moved to X: " + req.body.clientX + ", Y: " + req.body.clientY);
+        // console.log("mouse moved to X: " + req.body.clientX + ", Y: " + req.body.clientY);
         move(req.body.clientX, req.body.clientY);
     }
-    //res.send("communication succeeded");
 });
 
 app.listen(port, () => {
@@ -68,6 +71,6 @@ function gate(on) {
 function move(clientX, clientY) {
     // const x = Math.round((clientX + 0.5) * range);
     // const y = Math.round((clientY + 0.5) * range);
-    rpio.pwmSetData(PIN_PWM_X, x);
-    rpio.pwmSetData(PIN_PWM_Y, y);
+    rpio.pwmSetData(PIN_PWM_X, clientX);
+    rpio.pwmSetData(PIN_PWM_Y, clientY);
 }

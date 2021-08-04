@@ -342,7 +342,6 @@ function changeRange() {
 }
 
 async function sendServer(e) {
-    return;
     e.clientX = Math.round((e.clientX + 0.5) * 1024);
     e.clientY = Math.round((e.clientY + 0.5) * 1024);
     const options = {
@@ -353,6 +352,5 @@ async function sendServer(e) {
         body: JSON.stringify(e)
     }
     const response = await fetch("/", options);
-    // return await response.text();
-    // return;
+    return await response.text();
 }
