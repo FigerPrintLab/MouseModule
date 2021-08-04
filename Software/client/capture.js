@@ -1,4 +1,5 @@
 // GLOBAL VARIABLES //
+const digits = 3;
 let mode = true, rec = false, pb = false;
 let attenuation = 0, offset = 0, maxAttenuation = 20, border = 0.5;
 let startAtt, startOff, startMode;
@@ -26,7 +27,7 @@ addListeners();
 function handleMouseMove(e) {
     posX = e.clientX;
     posY = height - e.clientY;
-    ev = new EventData(e.type, e.buttons, e.clientX / width - 0.5, (height - e.clientY) / height - 0.5, e.deltaY, Math.round(e.timeStamp));
+    ev = new EventData(e.type, e.buttons, (e.clientX / width) - 0.5, (height - e.clientY) / height - 0.5, e.deltaY, Math.round(e.timeStamp));
     move(ev);
 }
 
@@ -112,7 +113,7 @@ function handleEraseKey(e) {
 
 function move(e) {
     constrain(e);
-    document.getElementById("coordinates").innerHTML = "X: " + e.clientX + ", Y: " + e.clientY;
+    // document.getElementById("coordinates").innerHTML = "X: " + e.clientX + ", Y: " + e.clientY;
     pointer.style.bottom = ((e.clientY + 0.5) * height - 5) + "px";
     pointer.style.left = ((e.clientX + 0.5) * width - 5) + "px";
     if (rec) {
@@ -152,14 +153,14 @@ function mouseDown(e) {
     else if (button === 16) {
         record(e);
     }
-    else debug(button);
+    //else debug(button);
 }
 
 function trigger(e) {
     if (rec) {
         recording.push(e);
     }
-    debug("TRIGGER PULSE");
+    //debug("TRIGGER PULSE");
     sendServer(e)
     .then((res) => {console.log("response: " + res)})
     .catch((err) => {console.warn(err)});
@@ -168,12 +169,15 @@ function trigger(e) {
 function gate(e) {
     if (rec)
         recording.push(e);
-    if (e.type === "mousedown") {
+    /*
+    if {
+        (e.type === "mousedown")
         debug("GATE ON");
     }
     else {
         debug("GATE OFF");
     }
+    */
     sendServer(e)
     .then((res) => {console.log("response: " + res)})
     .catch((err) => {console.warn(err)});
@@ -183,7 +187,7 @@ function changeMode(e) {
     if (rec)
         recording.push(e);
     mode = !mode;
-    debug("CHANGE MODE TO " + (mode ? "ATTENUATION" : "OFFSET"));
+    //debug("CHANGE MODE TO " + (mode ? "ATTENUATION" : "OFFSET"));
     sendServer(e);
 }
 
@@ -199,7 +203,7 @@ function record(e) {
         startMode = mode;
         recording.push(e);
     }
-    debug(rec ? "START RECORDING" : "PLAYBACK");
+    //debug(rec ? "START RECORDING" : "PLAYBACK");
 }
 
 function erase() {
@@ -219,7 +223,7 @@ function erase() {
         addListeners();
     }
     pb = false;
-    debug("ERASE");
+    //debug("ERASE");
 }
 
 function playback() {
@@ -253,6 +257,7 @@ function recursiveTimeout(i) {
 }
 
 function playbackEventHandler(e) {
+    console.log(e.timeStamp);
     let type = e.type;
     if (type === "mousemove") {
         move(e);
@@ -279,9 +284,10 @@ function debug(message) {
     if (element.firstChild != null)
         element.removeChild(element.firstChild);
     element.appendChild(tag);
+    return;
 }
 
-// BUG: In playback mode there's an undesired attenuation offset
+// FIXME: In playback mode there's an undesired attenuation offset
 function wheel(e) {
     let message;
     if (e.deltaY > 0) {
@@ -319,10 +325,10 @@ function wheel(e) {
     }
     changeRange();
     move(e);
-    debug(message);
+    //debug(message);
 }
 
-// BUG: ↑
+// FIXME: ↑
 function changeRange() {
     border = 0.5 + (attenuation / (maxAttenuation * 2));
     // let att = (maxAttenuation + attenuation) * (100/maxAttenuation);
@@ -336,6 +342,9 @@ function changeRange() {
 }
 
 async function sendServer(e) {
+    return;
+    e.clientX = Math.round((e.clientX + 0.5) * 1024);
+    e.clientY = Math.round((e.clientY + 0.5) * 1024);
     const options = {
         method: "POST",
         headers: {
@@ -344,6 +353,6 @@ async function sendServer(e) {
         body: JSON.stringify(e)
     }
     const response = await fetch("/", options);
-    return await response.text();
-    return;
+    // return await response.text();
+    // return;
 }

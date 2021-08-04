@@ -19,20 +19,20 @@ app.post("/", (req, res) => {
     //console.log(req.body);
     if (req.body.type === "mousedown") {
         if (req.body.buttons === 1) {
-            console.log("trigger pulse requested");
+            //console.log("trigger pulse requested");
             trigger();
         } else if (req.body.buttons === 2) {
-            console.log("gate on requested");
+            //console.log("gate on requested");
             gate(true);
         }
     } else if (req.body.type === "mouseup" && req.body.buttons === 2) {
-        console.log("gate off requested");
+        //console.log("gate off requested");
         gate(false);
     } else if (req.body.type === "mousemove") {
-        console.log("mouse moved to X: " + req.body.clientX + ", Y: " + req.body.clientY);
+        //console.log("mouse moved to X: " + req.body.clientX + ", Y: " + req.body.clientY);
         move(req.body.clientX, req.body.clientY);
     }
-    res.send("communication succeeded");
+    //res.send("communication succeeded");
 });
 
 app.listen(port, () => {
@@ -52,23 +52,22 @@ rpio.open(PIN_PWM_Y, rpio.PWM);
 rpio.pwmSetClockDivider(clockdiv);
 rpio.pwmSetRange(PIN_PWM_X, range);
 rpio.pwmSetRange(PIN_PWM_Y, range);
-rpio.open(PIN_GATE, rpio.OUTPUT, rpio.LOW);
-rpio.open(PIN_TRIG, rpio.OUTPUT, rpio.LOW);
+rpio.open(PIN_GATE, rpio.OUTPUT, rpio.HIGH);
+rpio.open(PIN_TRIG, rpio.OUTPUT, rpio.HIGH);
 
 function trigger() {
-    rpio.write(PIN_TRIG, rpio.HIGH);
+    rpio.write(PIN_TRIG, rpio.LOW);
     rpio.usleep(500);
-    rpio.write(PIN_TRIG, rpio.LOW); 
+    rpio.write(PIN_TRIG, rpio.HIGH);
 }
 
 function gate(on) {
-    rpio.write(PIN_GATE, on ? rpio.HIGH : rpio.LOW);
+    rpio.write(PIN_GATE, on ? rpio.LOW : rpio.HIGH);
 }
 
 function move(clientX, clientY) {
-    const x = Math.round((clientX + 0.5) * range);
-    const y = Math.round((clientY + 0.5) * range);
+    // const x = Math.round((clientX + 0.5) * range);
+    // const y = Math.round((clientY + 0.5) * range);
     rpio.pwmSetData(PIN_PWM_X, x);
     rpio.pwmSetData(PIN_PWM_Y, y);
 }
-// --------------------------------------- //
