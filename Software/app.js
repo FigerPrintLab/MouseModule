@@ -1,7 +1,8 @@
 // --------------- EXPRESS --------------- //
-const path = require("path");
+const path = require('path');
 const express = require('express');
-const bodyParser = require("body-parser");
+const bodyParser = require('body-parser');
+const raspberry = require('./raspberry');
 
 const port = 3000;
 const app = express();
@@ -10,14 +11,17 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'client')));
 
-app.get("/", function(req, res) {
+app.get('/', function(req, res) {
     res.sendFile(path.join(__dirname, 'index.html'));
+	return;
 });
 
-app.get("/favicon.ico", function(req, res) {
+app.get('/favicon.ico', function(req, res) {
     res.sendFile(path.join(__dirname, 'favicon.ico'));
+	return;
 });
 
+/*
 app.post("/", (req, res) => {
     res.send("communication succeeded");
     // console.log(req.body);
@@ -37,40 +41,14 @@ app.post("/", (req, res) => {
         move(req.body.clientX, req.body.clientY);
     }
 });
+*/
+
+app.post('/mousedown1', (req, res, next) => { raspberry.trigger(); res.send(); });
+app.post('/mousedown2', (req, res, next) => { raspberry.gate(true); res.send(); });
+app.post('/mouseup2', (req, res, next) => { raspberry.gate(false); res.send(); });
+app.post('/mousemove', (req, res, next) => { raspberry.move(req.body.clientX, req.body.clientY); res.send(); });
 
 app.listen(port, () => {
-    console.log(`Server listening on port ${port}`)
+    console.log(`Server listening on port ${port}`);
+	return;
 });
-// ----------------- RPIO ---------------- //
-const PIN_PWM_X = 12;
-const PIN_GATE = 29;
-const PIN_TRIG = 31;
-const PIN_PWM_Y = 33;
-const range = 1024;
-const clockdiv = 8;
-const rpio = require("rpio");
-
-rpio.open(PIN_PWM_X, rpio.PWM);
-rpio.open(PIN_PWM_Y, rpio.PWM);
-rpio.pwmSetClockDivider(clockdiv);
-rpio.pwmSetRange(PIN_PWM_X, range);
-rpio.pwmSetRange(PIN_PWM_Y, range);
-rpio.open(PIN_GATE, rpio.OUTPUT, rpio.HIGH);
-rpio.open(PIN_TRIG, rpio.OUTPUT, rpio.HIGH);
-
-function trigger() {
-    rpio.write(PIN_TRIG, rpio.LOW);
-    rpio.usleep(500);
-    rpio.write(PIN_TRIG, rpio.HIGH);
-}
-
-function gate(on) {
-    rpio.write(PIN_GATE, on ? rpio.LOW : rpio.HIGH);
-}
-
-function move(clientX, clientY) {
-    // const x = Math.round((clientX + 0.5) * range);
-    // const y = Math.round((clientY + 0.5) * range);
-    rpio.pwmSetData(PIN_PWM_X, clientX);
-    rpio.pwmSetData(PIN_PWM_Y, clientY);
-}

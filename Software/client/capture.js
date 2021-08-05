@@ -27,7 +27,14 @@ addListeners();
 function handleMouseMove(e) {
     posX = e.clientX;
     posY = height - e.clientY;
-    ev = new EventData(e.type, e.buttons, (e.clientX / width) - 0.5, (height - e.clientY) / height - 0.5, e.deltaY, Math.round(e.timeStamp));
+    decimalPrecision = Math.pow(10, digits);
+    ev = new EventData(
+        e.type,
+        e.buttons,
+        Math.round((((e.clientX / width) - 0.5) + Number.EPSILON) * decimalPrecision) / decimalPrecision,
+        Math.round((((height - e.clientY) / height - 0.5) + Number.EPSILON) * decimalPrecision) / decimalPrecision,
+        e.deltaY,
+        Math.round(e.timeStamp));
     move(ev);
 }
 
@@ -116,9 +123,8 @@ function move(e) {
     // document.getElementById("coordinates").innerHTML = "X: " + e.clientX + ", Y: " + e.clientY;
     pointer.style.bottom = ((e.clientY + 0.5) * height - 5) + "px";
     pointer.style.left = ((e.clientX + 0.5) * width - 5) + "px";
-    if (rec) {
+    if (rec)
         recording.push(e);
-    }
     sendServer(e);
 }
 
@@ -162,8 +168,8 @@ function trigger(e) {
     }
     //debug("TRIGGER PULSE");
     sendServer(e)
-    .then((res) => {console.log("response: " + res)})
-    .catch((err) => {console.warn(err)});
+    //.then((res) => {console.log("response: " + res)})
+    //.catch((err) => {console.warn(err)});
 }
 
 function gate(e) {
@@ -179,8 +185,8 @@ function gate(e) {
     }
     */
     sendServer(e)
-    .then((res) => {console.log("response: " + res)})
-    .catch((err) => {console.warn(err)});
+    //.then((res) => {console.log("response: " + res)})
+    //.catch((err) => {console.warn(err)});
 }
 
 function changeMode(e) {
@@ -257,7 +263,6 @@ function recursiveTimeout(i) {
 }
 
 function playbackEventHandler(e) {
-    console.log(e.timeStamp);
     let type = e.type;
     if (type === "mousemove") {
         move(e);
@@ -342,8 +347,11 @@ function changeRange() {
 }
 
 async function sendServer(e) {
+    // Adapt mouse position to the required PWM value in client side
+    const initX = e.clientX, initY = e.clientY;
     e.clientX = Math.round((e.clientX + 0.5) * 1024);
     e.clientY = Math.round((e.clientY + 0.5) * 1024);
+
     const options = {
         method: "POST",
         headers: {
@@ -351,6 +359,18 @@ async function sendServer(e) {
         },
         body: JSON.stringify(e)
     }
-    const response = await fetch("/", options);
-    return await response.text();
+
+    let response;
+    if (e.type === "mousedown" && e.buttons === 1)
+        response = await fetch("/mousedown1", options);
+    else if (e.type === "mousedown" && e.buttons === 2)
+        response = await fetch("/mousedown2", options);
+    else if (e.type === "mouseup" && e.buttons === 2)
+        response = await fetch("/mouseup2", options);
+    else if (e.type === "mousemove")
+        response = await fetch("/mousemove", options);
+    
+    e.clientX = initX;
+    e.clientY = initY;
+    return response;
 }
