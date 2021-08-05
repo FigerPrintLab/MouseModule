@@ -1,10 +1,11 @@
-// --------------- EXPRESS --------------- //
+#! /usr/bin/env node
+'use strict';
+
 const path = require('path');
 const express = require('express');
 const bodyParser = require('body-parser');
 const raspberry = require('./raspberry');
 
-const port = 3000;
 const app = express();
 
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -48,7 +49,4 @@ app.post('/mousedown2', (req, res, next) => { raspberry.gate(true); res.send(); 
 app.post('/mouseup2', (req, res, next) => { raspberry.gate(false); res.send(); });
 app.post('/mousemove', (req, res, next) => { raspberry.move(req.body.clientX, req.body.clientY); res.send(); });
 
-app.listen(port, () => {
-    console.log(`Server listening on port ${port}`);
-	return;
-});
+module.exports = app;
