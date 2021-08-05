@@ -59,7 +59,7 @@ function handleWheel(e) {
 
 function handleKeyDown(e) {
     if (e.key === "r" || e.key === "R") {
-        console.log(e);
+        //console.log(e);
         ev = new EventData("mousedown", 16, posX, posY, 0, Math.round(e.timeStamp));
         record(ev);
     }
