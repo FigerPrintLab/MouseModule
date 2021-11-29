@@ -369,7 +369,7 @@ async function sendServer(e) {
         response = await fetch("/mouseup2", options);
     else if (e.type === "mousemove")
         response = await fetch("/mousemove", options);
-    
+
     e.clientX = initX;
     e.clientY = initY;
     return response;
