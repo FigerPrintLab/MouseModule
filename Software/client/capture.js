@@ -201,6 +201,7 @@ function record(e) {
     rec = !rec;
     if (!rec && recording.length !== 0) { // start playback
         removeListeners();
+        sendServer(e, false, true);
         playback();
     }
     else { // start recording
@@ -208,13 +209,16 @@ function record(e) {
         startOff = offset;
         startMode = mode;
         recording.push(e);
+        sendServer(e, true, false);
     }
     //debug(rec ? "START RECORDING" : "PLAYBACK");
 }
 
 function erase() {
-    if (rec)
+    sendServer(ev, false, false);
+    if (rec) {
         rec = false;
+    }
     for (let i = 0; i < timeouts.length; i++) {
         clearTimeout(timeouts[i]);
     }
@@ -346,11 +350,13 @@ function changeRange() {
     range.style.left = ((100-att)/2 + off/2) + "%";
 }
 
-async function sendServer(e) {
+async function sendServer(e, rec_state = undefined, pb_state = undefined) {
     // Adapt mouse position to the required PWM value in client side
     const initX = e.clientX, initY = e.clientY;
     e.clientX = Math.round((e.clientX + 0.5) * 1024);
     e.clientY = Math.round((e.clientY + 0.5) * 1024);
+    e.rec_state = rec_state;
+    e.pb_state = pb_state;
 
     const options = {
         method: "POST",
@@ -361,7 +367,9 @@ async function sendServer(e) {
     }
 
     let response;
-    if (e.type === "mousedown" && e.buttons === 1)
+    if (rec_state !== undefined)
+        response = await fetch("/record", options);
+    else if (e.type === "mousedown" && e.buttons === 1)
         response = await fetch("/mousedown1", options);
     else if (e.type === "mousedown" && e.buttons === 2)
         response = await fetch("/mousedown2", options);
