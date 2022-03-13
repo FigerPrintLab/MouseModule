@@ -3,7 +3,7 @@
  */
 
 #ifndef EVENT_H
-#define EVENT_H
+    #define EVENT_H
 #endif
 
 #include <stdio.h>
@@ -25,7 +25,7 @@
  */
 #define NO_INDEX
 //#define NO_TIME
-#define NO_OTHER
+//#define NO_OTHER
 #define NO_SYN
 //#define NO_BTN
 //#define NO_REL
@@ -83,5 +83,6 @@ void playback(bool* pb, Thread* thread);
 void erase(bool* pb, Thread* thread, bool* stop);
 void record(const long double t, const struct input_event* event, bool* rec, bool* pb, Thread* thread);
 void move(const long double t, const struct input_event* event, const bool axis, int* val);
-void wheel(const long double t, const struct input_event* event, const bool* mode);
+void wheel(unsigned int* attenuation, int* offset, const long double t, const struct input_event* event, const bool* mode);
 void handle(const struct input_event* event);
+

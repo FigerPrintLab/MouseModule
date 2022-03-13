@@ -10,4 +10,4 @@ event.o: event.h hw.h event.c
 	gcc -c $(OPTIONS) event.c
 
 clean:
-	rm event.o main.o main
+	rm event.o main.o main || :

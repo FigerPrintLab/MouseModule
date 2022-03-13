@@ -388,7 +388,7 @@ void move(const long double t, const struct input_event* event, const bool axis,
     else
         *val -= event->value;
     
-    else if (*val > MAX_POS) {
+    if (*val > MAX_POS) {
         *val = MAX_POS;
     }
     else if (*val < MIN_POS) {
@@ -404,15 +404,15 @@ void move(const long double t, const struct input_event* event, const bool axis,
 void wheel(unsigned int* attenuation, int* offset, const long double t, const struct input_event* event, const bool* mode) {
     if (*mode) { /* OFFSET */
         if (event->value < 0) {
-            printf("DECREASING OFFSET: %d\n", --offset);
+            printf("DECREASING OFFSET: %d\n", --(*offset));
         } else { 
-            printf("INCREASING OFFSET: %d\n", ++offset);
+            printf("INCREASING OFFSET: %d\n", ++(*offset));
         }
     } else { /* ATTENUATION */
         if (event->value < 0) {
-            printf("DECREASING ATTENUATION: %d\n", --attenuation);
+            printf("DECREASING ATTENUATION: %d\n", --(*attenuation));
         } else {
-            printf("INCREASING ATTENUATION: %d\n", ++attenuation);
+            printf("INCREASING ATTENUATION: %d\n", ++(*attenuation));
         }
     }
 }
