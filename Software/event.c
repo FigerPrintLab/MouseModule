@@ -303,6 +303,7 @@ void stopThread(Thread* thread) {
 void trigger(const long double t, const struct input_event* event) {
     printf("%Lf, TRIGGER PULSE\n", t);
 }
+
 void gate(const long double t, const struct input_event* event) {
     if (event->value == 1) {
         printf("GATE ON\n");
@@ -310,6 +311,7 @@ void gate(const long double t, const struct input_event* event) {
         printf("GATE OFF\n");
     }
 }
+
 void changeMode(const long double t, const struct input_event* event, bool* mode) {
     *mode = !(*mode);
     if (*mode) {
@@ -318,6 +320,7 @@ void changeMode(const long double t, const struct input_event* event, bool* mode
         printf("ATTENUATION MODE\n");
     }
 }
+
 void* handlePlayback(void* arg) {
     Thread* thread = (Thread*)arg;
     clock_t start, end;
@@ -348,6 +351,7 @@ void* handlePlayback(void* arg) {
     pthread_exit(NULL);
     return NULL;
 }
+
 void playback(bool* pb, Thread* thread) {
     *pb = !(*pb);
     if (*pb) {
@@ -359,6 +363,7 @@ void playback(bool* pb, Thread* thread) {
 	    printf("STOP PLAYBACK\n");
     }
 }
+
 void erase(bool* pb, Thread* thread, bool* stop) {
     if (*pb) {
 	    playback(pb, thread);
@@ -368,6 +373,7 @@ void erase(bool* pb, Thread* thread, bool* stop) {
     stopThread(thread);
     *stop = false;
 }
+
 void record(const long double t, const struct input_event* event, bool* rec, bool* pb, Thread* thread) {
     *rec = !(*rec);
     if (*rec) {
@@ -382,6 +388,7 @@ void record(const long double t, const struct input_event* event, bool* rec, boo
 	    playback(pb, thread);
     }
 }
+
 void move(const long double t, const struct input_event* event, const bool axis, int* val) {
     if (axis)
         *val += event->value;
@@ -401,6 +408,7 @@ void move(const long double t, const struct input_event* event, const bool axis,
         printf("Y: %d\n", *val);
     }
 }
+
 void wheel(unsigned int* attenuation, int* offset, const long double t, const struct input_event* event, const bool* mode) {
     if (*mode) { /* OFFSET */
         if (event->value < 0) {
@@ -416,6 +424,7 @@ void wheel(unsigned int* attenuation, int* offset, const long double t, const st
         }
     }
 }
+
 void updatePosition(int* x, int* y, const unsigned int* attenuation, const int* offset) {
     return;
 }
