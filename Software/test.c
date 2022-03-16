@@ -11,7 +11,12 @@ int main() {
     if (exit_code = writePWMParameter(0, "enable",     1)       != 0)
         exit(exit_code);
     
-    sleep(3);
+    sleep(2);
+    printf("PWM\tenable: %d\tperiod: %d\tduty_cycle: %d\n",
+            readPWMParameter(0, "enable"),
+            readPWMParameter(0, "period"),
+            readPWMParameter(0, "duty_cycle"));
+    sleep(2);
     printf("Stopping PWM\n");
     if (exit_code = writePWMParameter(0, "enable",     0) != 0)
         exit(exit_code);

@@ -46,12 +46,12 @@ int readPWMParameter(const unsigned int chan, const char* param) {
     sprintf(filename, "/sys/class/pwm/pwmchip0/pwm%d/%s", chan, param);
 
     FILE* fptr = fopen(filename, "r");
-    if (fptr == NULL)
+    if (fptr == NULL) {
         printf("ERROR: Could not open %s\n", filename);
-        return -1
+        return -1;
     }
 
-    unsigned int value
+    unsigned int value;
     fscanf(fptr, "%d", &value);
 
     free(filename);
