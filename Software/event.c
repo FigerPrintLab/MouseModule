@@ -13,7 +13,7 @@
  */
 
 #include "event.h"
-#include "hw.h"
+#include "gpio.h"
 
 /*
  * Get the file name corresponding to the mouse
