@@ -65,6 +65,15 @@ typedef struct {
 } Thread;
 
 /*
+ * Object to store the current status
+ */
+typedef struct {
+    int x, y, offset;
+    unsigned int attenuation;
+    bool mode;
+} Status;
+
+/*
  * Function declarations
  */
 bool getFileName(FILE* fp, char* name);
@@ -81,7 +90,7 @@ void changeMode(const long double t, const struct input_event* event, bool* mode
 void* handlePlayback(void* arg);
 void playback(bool* pb, Thread* thread);
 void erase(bool* pb, Thread* thread, bool* stop);
-void record(const long double t, const struct input_event* event, bool* rec, bool* pb, Thread* thread);
+void record(const long double t, const struct input_event* event, bool* rec, bool* pb, Status* status, Thread* thread);
 void move(const long double t, const struct input_event* event, const bool axis, int* val);
 void wheel(unsigned int* attenuation, int* offset, const long double t, const struct input_event* event, const bool* mode);
 void handle(const struct input_event* event);

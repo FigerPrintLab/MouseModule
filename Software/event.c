@@ -13,7 +13,6 @@
  */
 
 #include "event.h"
-#include "gpio.h"
 
 /*
  * Get the file name corresponding to the mouse
@@ -328,6 +327,9 @@ void* handlePlayback(void* arg) {
 
     while(1) {
         printf("START\n");
+        /*
+         * TODO: Initialize parameters before every playback cycle
+         */
         for (unsigned int i = 0; i < thread->list.length-1; i++) {
             start = clock();
             long double time1 = (long double)thread->list.array[i].time.tv_sec + 0.000001 * (long double)thread->list.array[i].time.tv_usec;
@@ -374,7 +376,8 @@ void erase(bool* pb, Thread* thread, bool* stop) {
     *stop = false;
 }
 
-void record(const long double t, const struct input_event* event, bool* rec, bool* pb, Thread* thread) {
+void record(const long double t, const struct input_event* event, bool* rec, bool* pb, Status* status, Thread* thread) {
+    static Status start = { 0, 0, 0, 0, false };
     *rec = !(*rec);
     if (*rec) {
         if (*pb) {
@@ -382,9 +385,19 @@ void record(const long double t, const struct input_event* event, bool* rec, boo
         }
         /* Alloc 0 memory to reinitialize the array */
         thread->list.array = (struct input_event*) malloc(0);
-        printf("START RECORDING\n");
+        start.x = status->x;
+        start.y = status->y;
+        start.attenuation = status->attenuation;
+        start.offset = status->offset;
+        start.mode = status->mode;
+        printf("START RECORDING (%d)\n", start.x);
     } else {
         printf("STOP RECORDING\n");
+        status->x = start.x;
+        status->y = start.y;
+        status->attenuation = start.attenuation;
+        status->offset = start.offset;
+        status->mode = start.mode;
 	    playback(pb, thread);
     }
 }
@@ -433,12 +446,14 @@ void updatePosition(int* x, int* y, const unsigned int* attenuation, const int* 
  * Main handling function
  */
 void handle(const struct input_event* event) {
-    static int x = 0, y = 0;
-    static unsigned int attenuation = 0;
-    static int offset = 0;
+    // static int x = 0, y = 0;
+    // static unsigned int attenuation = 0;
+    // static int offset = 0;
+    // static bool mode = false; // false: attenuation | true: offset
+
+    static Status status = { 0, 0, 0, 0, false };
     static bool rec = false; // recording state
     static bool pb = false; // playback state
-    static bool mode = false; // false: attenuation | true: offset
     const long double timestamp = (long double) event->time.tv_sec +
 	                    0.000001 * (long double) event->time.tv_usec;
     bool relevant = false;
@@ -474,12 +489,12 @@ void handle(const struct input_event* event) {
              * (for mice without extra buttons)
              */
             //changeMode(timestamp, event, &mode, &rec);
-            record(timestamp, event, &rec, &pb, &thread);
+            record(timestamp, event, &rec, &pb, &status, &thread);
 	        relevant = true;
         } else if (event->code == BTN_SIDE && event->value == 1) {
             if (rec) {
                 printf("ERASE WHILE IN RECORD MODE\n");
-                record(timestamp, event, &rec, &pb, &thread);
+                record(timestamp, event, &rec, &pb, &status, &thread);
                 erase(&pb, &thread, &stop);
             }
             if (pb) {
@@ -487,31 +502,31 @@ void handle(const struct input_event* event) {
                 erase(&pb, &thread, &stop);
             }
         } else if (event->code == BTN_EXTRA && event->value == 1) {
-            record(timestamp, event, &rec, &pb, &thread);
+            record(timestamp, event, &rec, &pb, &status, &thread);
 	        relevant = true;
         }
     } else if (event->type == EV_REL/* && !pb*/) {
         if (event->code == REL_X) {
-            move(timestamp, event, true, &x);
+            move(timestamp, event, true, &status.x);
 	        relevant = true;
         } else if (event->code == REL_Y) {
-            move(timestamp, event, false, &y);
+            move(timestamp, event, false, &status.y);
 	        relevant = true;
         } else if (event->code == REL_WHEEL) {
-            wheel(&attenuation, &offset, timestamp, event, &mode);
-            updatePosition(&x, &y, &attenuation, &offset);
+            wheel(&status.attenuation, &status.offset, timestamp, event, &status.mode);
+            updatePosition(&status.x, &status.y, &status.attenuation, &status.offset);
 	        relevant = true;
         }
     } else if (event->type == EV_ABS/* && !pb*/) {
         if (event->code == ABS_X) {
-            move(timestamp, event, true, &x);
+            move(timestamp, event, true, &status.x);
 	        relevant = true;
         } else if (event->code == ABS_Y) {
-            move(timestamp, event, false, &y);
+            move(timestamp, event, false, &status.y);
 	        relevant = true;
         } else if (event->code == ABS_WHEEL) {
-            wheel(&attenuation, &offset, timestamp, event, &mode);
-            updatePosition(&x, &y, &attenuation, &offset);
+            wheel(&status.attenuation, &status.offset, timestamp, event, &status.mode);
+            updatePosition(&status.x, &status.y, &status.attenuation, &status.offset);
 	        relevant = true;
         }
     }
