@@ -328,14 +328,24 @@ void* handlePlayback(void* arg) {
     while(1) {
         printf("START\n");
         /*
-         * TODO: Initialize parameters before every playback cycle
+         * Reset the current status to the initial one
+         *
+         * I would have used the following form:
+         * *(Status*)thread->status = (Status)thread->start
+         * It actually works but it gives a warning related to 
+         * casting nonscalar variables (Status structure in this case)
          */
+        *(Status*)thread->status = *(Status*)&thread->start;
+
+        /* Replay all the recorded events */
         for (unsigned int i = 0; i < thread->list.length-1; i++) {
-            start = clock();
+            /* Calculate interval between subsequent events */
             long double time1 = (long double)thread->list.array[i].time.tv_sec + 0.000001 * (long double)thread->list.array[i].time.tv_usec;
             long double time2 = (long double)thread->list.array[i+1].time.tv_sec + 0.000001 * (long double)thread->list.array[i+1].time.tv_usec;
-            double interval = time2- time1;
+            double interval = time2 - time1;
             
+            /* Wait the interval unless the playback is stopped */
+            start = clock();
             do {
                 end = clock();
                 elapsed = ((double) (end - start))/CLOCKS_PER_SEC;
@@ -377,29 +387,24 @@ void erase(bool* pb, Thread* thread, bool* stop) {
 }
 
 void record(const long double t, const struct input_event* event, bool* rec, bool* pb, Status* status, Thread* thread) {
-    static Status start = { 0, 0, 0, 0, false };
     *rec = !(*rec);
     if (*rec) {
         if (*pb) {
             playback(pb, thread);
         }
-        /* Alloc 0 memory to reinitialize the array */
+        /* Alloc 0 memory to reinitialize the event array */
         thread->list.array = (struct input_event*) malloc(0);
-        start.x = status->x;
-        start.y = status->y;
-        start.attenuation = status->attenuation;
-        start.offset = status->offset;
-        start.mode = status->mode;
-        printf("START RECORDING (%d)\n", start.x);
+        /* Save current status to restore it on every new playback cycle */
+        thread->start = *status;
+        printf("START RECORDING\n");
     } else {
         printf("STOP RECORDING\n");
-        status->x = start.x;
-        status->y = start.y;
-        status->attenuation = start.attenuation;
-        status->offset = start.offset;
-        status->mode = start.mode;
 	    playback(pb, thread);
     }
+}
+
+void printStatus(const Status* s) {
+    printf("STATUS: x = %d\ty = %d\tattenuation = %d\toffset = %d\tmode = %s\n", s->x, s->y, s->attenuation, s->offset, s->mode ? "true" : "false");
 }
 
 void move(const long double t, const struct input_event* event, const bool axis, int* val) {
@@ -438,6 +443,7 @@ void wheel(unsigned int* attenuation, int* offset, const long double t, const st
     }
 }
 
+/* Update current position when it's out of range (because of a new attenuation or offset event) */
 void updatePosition(int* x, int* y, const unsigned int* attenuation, const int* offset) {
     return;
 }
@@ -446,11 +452,6 @@ void updatePosition(int* x, int* y, const unsigned int* attenuation, const int* 
  * Main handling function
  */
 void handle(const struct input_event* event) {
-    // static int x = 0, y = 0;
-    // static unsigned int attenuation = 0;
-    // static int offset = 0;
-    // static bool mode = false; // false: attenuation | true: offset
-
     static Status status = { 0, 0, 0, 0, false };
     static bool rec = false; // recording state
     static bool pb = false; // playback state
@@ -458,7 +459,7 @@ void handle(const struct input_event* event) {
 	                    0.000001 * (long double) event->time.tv_usec;
     bool relevant = false;
     static bool stop = false;
-    static Thread thread = {0, {NULL, 0}, &stop}; // thread data
+    static Thread thread = {0, {NULL, 0}, { 0 , 0, 0, 0, false }, &status, &stop}; // thread data
     
     /* If we're if playback mode and this function is called
      * by the main thread, allow the handling only if it's

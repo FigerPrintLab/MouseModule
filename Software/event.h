@@ -56,15 +56,6 @@ typedef struct {
 } List;
 
 /*
- * Thread data
- */
-typedef struct {
-    pthread_t id;
-    List list;
-    bool* stop;
-} Thread;
-
-/*
  * Object to store the current status
  */
 typedef struct {
@@ -72,6 +63,17 @@ typedef struct {
     unsigned int attenuation;
     bool mode;
 } Status;
+
+/*
+ * Thread data
+ */
+typedef struct {
+    pthread_t id;
+    List list;
+    Status start;
+    Status* status;
+    bool* stop;
+} Thread;
 
 /*
  * Function declarations
@@ -91,6 +93,7 @@ void* handlePlayback(void* arg);
 void playback(bool* pb, Thread* thread);
 void erase(bool* pb, Thread* thread, bool* stop);
 void record(const long double t, const struct input_event* event, bool* rec, bool* pb, Status* status, Thread* thread);
+void printStatus(const Status* s);
 void move(const long double t, const struct input_event* event, const bool axis, int* val);
 void wheel(unsigned int* attenuation, int* offset, const long double t, const struct input_event* event, const bool* mode);
 void handle(const struct input_event* event);
