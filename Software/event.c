@@ -7,23 +7,14 @@
  * The pigpio library is used to generate hw signals.
  * 
  * TODO:
- *  - Implement the attenuation/offset logic
- *  - Implement the mouse movement logic (range constrains)
+ *  - Implement the movement constraining logic based on 
+ *    attenuation and offset
  *  - Add the ending event to the recording array list in 
  *    order end the playback correctly
  */
 
 #include <pigpio.h>
 #include "event.h"
-
-#define PWM_0 18
-#define PWM_1 13
-#define GATE   5
-#define TRIG   6
-#define REC    4
-#define PB    17
-#define FREQ  PI_HW_PWM_MAX_FREQ / 100000
-#define CONST PI_HW_PWM_RANGE / (2 * MAX_POS)
 
 /*
  * Get the file name corresponding to the mouse
@@ -436,6 +427,7 @@ void move(const long double t, const struct input_event* event, const bool axis,
         *val -= event->value;
     }
     
+    // int max = MAX_POS / ATTENUATION_RANGE * (*attenuation);
     if (*val > MAX_POS) {
         *val = MAX_POS;
     }
@@ -453,25 +445,49 @@ void move(const long double t, const struct input_event* event, const bool axis,
     }
 }
 
-void wheel(unsigned int* attenuation, int* offset, const long double t, const struct input_event* event, const bool* mode) {
-    if (*mode) { /* OFFSET */
-        if (event->value < 0) {
-            printf("DECREASING OFFSET: %d\n", --(*offset));
-        } else { 
-            printf("INCREASING OFFSET: %d\n", ++(*offset));
-        }
-    } else { /* ATTENUATION */
-        if (event->value < 0) {
-            printf("DECREASING ATTENUATION: %d\n", --(*attenuation));
+void wheel(int* attenuation, int* offset, const long double t, const struct input_event* event, const bool* mode) {
+    if (event->value < 0) {
+        if (!(*mode)) {
+            if (*attenuation > (-ATTENUATION_RANGE)) {
+                --(*attenuation);
+            }
+            printf("ATTENUATION: %d\n", *attenuation);
         } else {
-            printf("INCREASING ATTENUATION: %d\n", ++(*attenuation));
+            if (*offset > *attenuation) {
+                --(*offset);
+            }
+            printf("OFFSET: %d\n", *offset);
+        }
+    } else {
+        if (!(*mode)) {
+            if (*attenuation < -(abs(*offset))) {
+                ++(*attenuation);
+            }
+            printf("ATTENUATION: %d\n", *attenuation);
+        } else {
+            if (*offset < -(*attenuation)) {
+                ++(*offset);
+            }
+            printf("OFFSET: %d\n", *offset);
         }
     }
 }
 
 /* Update current position when it's out of range (because of a new attenuation or offset event) */
-void updatePosition(int* x, int* y, const unsigned int* attenuation, const int* offset) {
-    return;
+void updatePosition(int* x, int* y, const int* attenuation, const int* offset) {
+    float border = 0.5 + (*attenuation / (ATTENUATION_RANGE * 2));
+    int max = (int)(border + (*offset / (ATTENUATION_RANGE * 2)));
+    int min = (int)(-border + (*offset / (ATTENUATION_RANGE * 2)));
+
+    if (*x > max)
+        *x = max;
+    else if (*x < min)
+        *x = min;
+
+    if (*y > max)
+        *y = max;
+    else if (*y < min)
+        *y = min;
 }
 
 /* 
@@ -501,6 +517,7 @@ void handle(const struct input_event* event) {
         //printf("THREAD\n");
     }
 
+    /* Call the appropriate function based on the event type */
     if (event->type == EV_KEY) {
         if (event->code == BTN_LEFT && event->value == 1) {
             trigger(timestamp, event);
@@ -509,14 +526,8 @@ void handle(const struct input_event* event) {
             gate(timestamp, event);
 	        relevant = true;
         } else if (event->code == BTN_MIDDLE && event->value == 1) {
-
-            /*
-             * --- ONLY FOR DEBUG PURPOSES ---
-             * CLICK THE MOUSE WHEEL TO START/STOP RECORDING
-             * (for mice without extra buttons)
-             */
-            //changeMode(timestamp, event, &mode, &rec);
-            record(timestamp, event, &rec, &pb, &status, &thread);
+            changeMode(timestamp, event, &status.mode);
+            // record(timestamp, event, &rec, &pb, &status, &thread);
 	        relevant = true;
         } else if (event->code == BTN_SIDE && event->value == 1) {
             if (rec) {
@@ -558,7 +569,9 @@ void handle(const struct input_event* event) {
         }
     }
     
+    /* Save the event in the recording array if it's a relevant event */
     if (relevant && rec) {
 	    pushEvent(&thread, event);
     }
 }
+

@@ -26,6 +26,10 @@
 #define REC    4
 #define PB    17
 
+#define FREQ  PI_HW_PWM_MAX_FREQ / 100000
+#define CONST PI_HW_PWM_RANGE / (2 * MAX_POS)
+#define ATTENUATION_RANGE 10
+
 /*
  * Uncomment these lines to skip some events or some infos
  * from being printed
@@ -66,8 +70,7 @@ typedef struct {
  * Object to store the current status
  */
 typedef struct {
-    int x, y, offset;
-    unsigned int attenuation;
+    int x, y, offset, attenuation;
     bool mode;
 } Status;
 
@@ -102,6 +105,6 @@ void erase(bool* pb, Thread* thread, bool* stop);
 void record(const long double t, const struct input_event* event, bool* rec, bool* pb, Status* status, Thread* thread);
 void printStatus(const Status* s);
 void move(const long double t, const struct input_event* event, const bool axis, int* val);
-void wheel(unsigned int* attenuation, int* offset, const long double t, const struct input_event* event, const bool* mode);
+void wheel(int* attenuation, int* offset, const long double t, const struct input_event* event, const bool* mode);
 void handle(const struct input_event* event);
 
