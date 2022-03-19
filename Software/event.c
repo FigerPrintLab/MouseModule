@@ -3,16 +3,27 @@
  * some significant mouse events and turn them into analog
  * signals.
  * For more info about the event catalogation in linux check
- * "linux/input.h"
+ * "linux/input.h" 
+ * The pigpio library is used to generate hw signals.
  * 
  * TODO:
  *  - Implement the attenuation/offset logic
  *  - Implement the mouse movement logic (range constrains)
- *  - Find a suitable library to control the Pi GPIOs
- *  - Generate the hardware signals
+ *  - Add the ending event to the recording array list in 
+ *    order end the playback correctly
  */
 
+#include <pigpio.h>
 #include "event.h"
+
+#define PWM_0 18
+#define PWM_1 13
+#define GATE   5
+#define TRIG   6
+#define REC    4
+#define PB    17
+#define FREQ  PI_HW_PWM_MAX_FREQ / 100000
+#define CONST PI_HW_PWM_RANGE / (2 * MAX_POS)
 
 /*
  * Get the file name corresponding to the mouse
@@ -176,8 +187,8 @@ void setStrEvent(const struct input_event* systemEvent, struct str_event* event)
     }
 
     event->timestamp = (double) systemEvent->time.tv_sec + 0.000001 * (double) systemEvent->time.tv_usec;
-    event->value = systemEvent->value;
     event->code = getCode(event->type, systemEvent->code);
+    event->value = systemEvent->value;
 }
 
 /*
@@ -300,13 +311,20 @@ void stopThread(Thread* thread) {
  * Event handlers
  */
 void trigger(const long double t, const struct input_event* event) {
-    printf("%Lf, TRIGGER PULSE\n", t);
+    gpioWrite(TRIG, 1);
+    clock_t start = clock();
+    while (clock() - start < 0.00005*CLOCKS_PER_SEC) {
+    }
+    gpioWrite(TRIG, 0);
+    printf("TRIGGER PULSE\n");
 }
 
 void gate(const long double t, const struct input_event* event) {
     if (event->value == 1) {
+        gpioWrite(GATE, 1);
         printf("GATE ON\n");
-    } else {
+    } else if (event->value == 0) {
+            gpioWrite(GATE, 0);
         printf("GATE OFF\n");
     }
 }
@@ -367,11 +385,13 @@ void* handlePlayback(void* arg) {
 void playback(bool* pb, Thread* thread) {
     *pb = !(*pb);
     if (*pb) {
+        gpioWrite(PB, 1);
 	    printf("START PLAYBACK, registered %d events\n", thread->list.length);
 
         int error = pthread_create(&thread->id, NULL, &handlePlayback, (void*)thread);
         if (error != 0) printf("ERROR: Unable to create thread: %s\n", strerror(error));
     } else {
+        gpioWrite(PB, 0);
 	    printf("STOP PLAYBACK\n");
     }
 }
@@ -396,8 +416,10 @@ void record(const long double t, const struct input_event* event, bool* rec, boo
         thread->list.array = (struct input_event*) malloc(0);
         /* Save current status to restore it on every new playback cycle */
         thread->start = *status;
+        gpioWrite(REC, 1);
         printf("START RECORDING\n");
     } else {
+        gpioWrite(REC, 0);
         printf("STOP RECORDING\n");
 	    playback(pb, thread);
     }
@@ -408,10 +430,11 @@ void printStatus(const Status* s) {
 }
 
 void move(const long double t, const struct input_event* event, const bool axis, int* val) {
-    if (axis)
+    if (axis) {
         *val += event->value;
-    else
+    } else {
         *val -= event->value;
+    }
     
     if (*val > MAX_POS) {
         *val = MAX_POS;
@@ -420,9 +443,12 @@ void move(const long double t, const struct input_event* event, const bool axis,
         *val = MIN_POS;
     }
 
-    if (axis) { /* x */
+    unsigned d = ((float)*val+1000)*CONST;
+    if (axis) {
+        gpioHardwarePWM(PWM_0, FREQ, d);
         printf("X: %d\n", *val);
-    } else { /* y */
+    } else {
+        gpioHardwarePWM(PWM_1, FREQ, d);
         printf("Y: %d\n", *val);
     }
 }
@@ -459,7 +485,7 @@ void handle(const struct input_event* event) {
 	                    0.000001 * (long double) event->time.tv_usec;
     bool relevant = false;
     static bool stop = false;
-    static Thread thread = {0, {NULL, 0}, { 0 , 0, 0, 0, false }, &status, &stop}; // thread data
+    static Thread thread = {0, {NULL, 0}, { 0 , 0, 0, 0, false }, &status, &stop};
     
     /* If we're if playback mode and this function is called
      * by the main thread, allow the handling only if it's

@@ -2,8 +2,15 @@
  * This program read some significant mouse events and use
  * them to generate analog signals through the Raspberry PI
  * GPIOs.
+ *
+ * TODO:
+ *  - Handle interrupt signal
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <pigpio.h>
 #include "event.h"
 
 int main(int argc, char** argv) {
@@ -34,20 +41,32 @@ int main(int argc, char** argv) {
         printf("OPENINIG %s\n", filePath);
     }
 
+    /* Initialize the gpios */
+    if (gpioInitialise() < 0) return EXIT_FAILURE;
+    gpioHardwarePWM(PWM_0, 0, 0);
+    gpioHardwarePWM(PWM_1, 0, 0);
+    if (gpioSetMode(GATE, PI_OUTPUT) != 0) return EXIT_FAILURE;
+    if (gpioSetMode(TRIG, PI_OUTPUT) != 0) return EXIT_FAILURE;
+    if (gpioSetMode(REC,  PI_OUTPUT) != 0) return EXIT_FAILURE;
+    if (gpioSetMode(PB,   PI_OUTPUT) != 0) return EXIT_FAILURE;
+
+    /* Event polling loop */
     unsigned long i = 0;
     while(1) {
+        /* Read from the mouse file */
         size_t bytes = fread(&systemEvent, sizeof(struct input_event), 1, mouse);
 
         /* If we managed to read some bytes, print the relative events */
         if (bytes > 0) {
             //printRaw(i, &systemEvent);
             setStrEvent(&systemEvent, &myEvent);
-            //printHuman(i, &myEvent);
+            // printHuman(i, &myEvent);
 	        //printFunctional(&myEvent, &rec, &mode);
             handle(&systemEvent);
             i++;
         }
     }
+    gpioTerminate();
     return EXIT_SUCCESS;
 }
 

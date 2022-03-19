@@ -19,6 +19,13 @@
 #include <linux/input.h>
 #include <regex.h>
 
+#define PWM_0 18
+#define PWM_1 13
+#define GATE   5
+#define TRIG   6
+#define REC    4
+#define PB    17
+
 /*
  * Uncomment these lines to skip some events or some infos
  * from being printed
