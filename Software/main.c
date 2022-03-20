@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     if (gpioSetMode(PB,   PI_OUTPUT) != 0) return EXIT_FAILURE;
 
     /* Event polling loop */
-    unsigned long i = 0;
+    // unsigned long i = 0;
     while(1) {
         /* Read from the mouse file */
         size_t bytes = fread(&systemEvent, sizeof(struct input_event), 1, mouse);
@@ -63,7 +63,8 @@ int main(int argc, char** argv) {
             // printHuman(i, &myEvent);
 	        //printFunctional(&myEvent, &rec, &mode);
             handle(&systemEvent);
-            i++;
+            /* Uncomment to get the incremental number of events */
+            // i++;
         }
     }
     gpioTerminate();

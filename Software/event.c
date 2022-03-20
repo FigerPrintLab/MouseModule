@@ -5,15 +5,8 @@
  * For more info about the event catalogation in linux check
  * "linux/input.h" 
  * The pigpio library is used to generate hw signals.
- * 
- * TODO:
- *  - Implement the movement constraining logic based on 
- *    attenuation and offset
- *  - Add the ending event to the recording array list in 
- *    order end the playback correctly
  */
 
-#include <pigpio.h>
 #include "event.h"
 
 /*
@@ -345,19 +338,27 @@ void* handlePlayback(void* arg) {
          * casting nonscalar variables (Status structure in this case)
          */
         *(Status*)thread->status = *(Status*)&thread->start;
+        updatePosition(&(*(Status*)thread->status).x,
+                       &(*(Status*)thread->status).y,
+                       &(*(Status*)thread->status).max,
+                       &(*(Status*)thread->status).min,
+                       &(*(Status*)thread->status).attenuation,
+                       &(*(Status*)thread->status).offset);
 
         /* Replay all the recorded events */
         for (unsigned int i = 0; i < thread->list.length-1; i++) {
             /* Calculate interval between subsequent events */
-            long double time1 = (long double)thread->list.array[i].time.tv_sec + 0.000001 * (long double)thread->list.array[i].time.tv_usec;
-            long double time2 = (long double)thread->list.array[i+1].time.tv_sec + 0.000001 * (long double)thread->list.array[i+1].time.tv_usec;
+            long double time1 = (long double)thread->list.array[i].time.tv_sec 
+                   + 0.000001 * (long double)thread->list.array[i].time.tv_usec;
+            long double time2 = (long double)thread->list.array[i+1].time.tv_sec 
+                   + 0.000001 * (long double)thread->list.array[i+1].time.tv_usec;
             double interval = time2 - time1;
             
             /* Wait the interval unless the playback is stopped */
             start = clock();
             do {
                 end = clock();
-                elapsed = ((double) (end - start))/CLOCKS_PER_SEC;
+                elapsed = ((double) (end - start)) / CLOCKS_PER_SEC;
                 if (*thread->stop) {
                     printf("EXIT THREAD\n");
                     pthread_exit(NULL);
@@ -410,6 +411,12 @@ void record(const long double t, const struct input_event* event, bool* rec, boo
         gpioWrite(REC, 1);
         printf("START RECORDING\n");
     } else {
+        /* Push a dummy event to the array list so that the last significant event
+         * (end of recording) is played with the correct timing */
+        struct input_event dummy = *event;
+        dummy.type = 0xff;
+        pushEvent(thread, &dummy);
+
         gpioWrite(REC, 0);
         printf("STOP RECORDING\n");
 	    playback(pb, thread);
@@ -420,19 +427,18 @@ void printStatus(const Status* s) {
     printf("STATUS: x = %d\ty = %d\tattenuation = %d\toffset = %d\tmode = %s\n", s->x, s->y, s->attenuation, s->offset, s->mode ? "true" : "false");
 }
 
-void move(const long double t, const struct input_event* event, const bool axis, int* val) {
+void move(const long double t, const struct input_event* event, const bool axis, int* val, int* max, int* min) {
     if (axis) {
         *val += event->value;
     } else {
         *val -= event->value;
     }
     
-    // int max = MAX_POS / ATTENUATION_RANGE * (*attenuation);
-    if (*val > MAX_POS) {
-        *val = MAX_POS;
+    if (*val > *max) {
+        *val = *max;
     }
-    else if (*val < MIN_POS) {
-        *val = MIN_POS;
+    else if (*val < *min) {
+        *val = *min;
     }
 
     unsigned d = ((float)*val+1000)*CONST;
@@ -448,7 +454,7 @@ void move(const long double t, const struct input_event* event, const bool axis,
 void wheel(int* attenuation, int* offset, const long double t, const struct input_event* event, const bool* mode) {
     if (event->value < 0) {
         if (!(*mode)) {
-            if (*attenuation > (-ATTENUATION_RANGE)) {
+            if (*attenuation > (-MAX_ATT)) {
                 --(*attenuation);
             }
             printf("ATTENUATION: %d\n", *attenuation);
@@ -474,34 +480,41 @@ void wheel(int* attenuation, int* offset, const long double t, const struct inpu
 }
 
 /* Update current position when it's out of range (because of a new attenuation or offset event) */
-void updatePosition(int* x, int* y, const int* attenuation, const int* offset) {
-    float border = 0.5 + (*attenuation / (ATTENUATION_RANGE * 2));
-    int max = (int)(border + (*offset / (ATTENUATION_RANGE * 2)));
-    int min = (int)(-border + (*offset / (ATTENUATION_RANGE * 2)));
+void updatePosition(int* x, int* y, int* max, int* min, const int* attenuation, const int* offset) {
+    float border = 0.5 + ((float)*attenuation / (MAX_ATT * 2));
+    *max = (int)((border  + ((float)*offset / (MAX_ATT * 2))) * 2 * MAX_POS);
+    *min = (int)((-border + ((float)*offset / (MAX_ATT * 2))) * 2 * MAX_POS);
 
-    if (*x > max)
-        *x = max;
-    else if (*x < min)
-        *x = min;
+    printf("MIN = %d\tMAX = %d\n", *min, *max);
+    if (*x > *max)
+        *x = *max;
+    else if (*x < *min)
+        *x = *min;
 
-    if (*y > max)
-        *y = max;
-    else if (*y < min)
-        *y = min;
+    if (*y > *max)
+        *y = *max;
+    else if (*y < *min)
+        *y = *min;
+
+    unsigned d = ((float)*x + 1000) * CONST;
+    gpioHardwarePWM(PWM_0, FREQ, d);
+    d = ((float)*y + 1000) * CONST;
+    gpioHardwarePWM(PWM_1, FREQ, d);
+    // printf("X = %d\tY = %d\n", *x, *y);
 }
 
 /* 
  * Main handling function
  */
 void handle(const struct input_event* event) {
-    static Status status = { 0, 0, 0, 0, false };
+    static Status status = { 0, 0, MAX_POS, -MAX_POS, 0, 0, false };
     static bool rec = false; // recording state
     static bool pb = false; // playback state
     const long double timestamp = (long double) event->time.tv_sec +
 	                    0.000001 * (long double) event->time.tv_usec;
     bool relevant = false;
     static bool stop = false;
-    static Thread thread = {0, {NULL, 0}, { 0 , 0, 0, 0, false }, &status, &stop};
+    static Thread thread = { 0, {NULL, 0}, { 0, 0, MAX_POS, -MAX_POS, 0, 0, false }, &status, &stop };
     
     /* If we're if playback mode and this function is called
      * by the main thread, allow the handling only if it's
@@ -527,7 +540,6 @@ void handle(const struct input_event* event) {
 	        relevant = true;
         } else if (event->code == BTN_MIDDLE && event->value == 1) {
             changeMode(timestamp, event, &status.mode);
-            // record(timestamp, event, &rec, &pb, &status, &thread);
 	        relevant = true;
         } else if (event->code == BTN_SIDE && event->value == 1) {
             if (rec) {
@@ -545,26 +557,26 @@ void handle(const struct input_event* event) {
         }
     } else if (event->type == EV_REL/* && !pb*/) {
         if (event->code == REL_X) {
-            move(timestamp, event, true, &status.x);
+            move(timestamp, event, true, &status.x, &status.max, &status.min);
 	        relevant = true;
         } else if (event->code == REL_Y) {
-            move(timestamp, event, false, &status.y);
+            move(timestamp, event, false, &status.y, &status.max, &status.min);
 	        relevant = true;
         } else if (event->code == REL_WHEEL) {
             wheel(&status.attenuation, &status.offset, timestamp, event, &status.mode);
-            updatePosition(&status.x, &status.y, &status.attenuation, &status.offset);
+            updatePosition(&status.x, &status.y, &status.max, &status.min, &status.attenuation, &status.offset);
 	        relevant = true;
         }
     } else if (event->type == EV_ABS/* && !pb*/) {
         if (event->code == ABS_X) {
-            move(timestamp, event, true, &status.x);
+            move(timestamp, event, true, &status.x, &status.max, &status.min);
 	        relevant = true;
         } else if (event->code == ABS_Y) {
-            move(timestamp, event, false, &status.y);
+            move(timestamp, event, false, &status.y, &status.max, &status.min);
 	        relevant = true;
         } else if (event->code == ABS_WHEEL) {
             wheel(&status.attenuation, &status.offset, timestamp, event, &status.mode);
-            updatePosition(&status.x, &status.y, &status.attenuation, &status.offset);
+            updatePosition(&status.x, &status.y, &status.max, &status.min, &status.attenuation, &status.offset);
 	        relevant = true;
         }
     }

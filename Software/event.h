@@ -18,17 +18,17 @@
 #include <pthread.h>
 #include <linux/input.h>
 #include <regex.h>
+#include <pigpio.h>
 
+/* GPIO & PWM parameters */
 #define PWM_0 18
 #define PWM_1 13
 #define GATE   5
 #define TRIG   6
 #define REC    4
 #define PB    17
-
 #define FREQ  PI_HW_PWM_MAX_FREQ / 100000
 #define CONST PI_HW_PWM_RANGE / (2 * MAX_POS)
-#define ATTENUATION_RANGE 10
 
 /*
  * Uncomment these lines to skip some events or some infos
@@ -43,10 +43,11 @@
 //#define NO_ABS
 
 /*
- * Maximum & minimum mouse position
+ * Maximum & minimum mouse position & attenuation
  */
 #define MAX_POS 1000
 #define MIN_POS -MAX_POS
+#define MAX_ATT 10
 
 /* 
  * Human readable event struct
@@ -70,7 +71,7 @@ typedef struct {
  * Object to store the current status
  */
 typedef struct {
-    int x, y, offset, attenuation;
+    int x, y, max, min, offset, attenuation;
     bool mode;
 } Status;
 
@@ -104,7 +105,8 @@ void playback(bool* pb, Thread* thread);
 void erase(bool* pb, Thread* thread, bool* stop);
 void record(const long double t, const struct input_event* event, bool* rec, bool* pb, Status* status, Thread* thread);
 void printStatus(const Status* s);
-void move(const long double t, const struct input_event* event, const bool axis, int* val);
+void move(const long double t, const struct input_event* event, const bool axis, int* val, int* max, int* min);
 void wheel(int* attenuation, int* offset, const long double t, const struct input_event* event, const bool* mode);
+void updatePosition(int* x, int* y, int* max, int* min, const int* attenuation, const int* offset);
 void handle(const struct input_event* event);
 
