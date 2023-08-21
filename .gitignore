@@ -1,3 +1,4 @@
+tags
 Software/.vscode
 Software/*
 !Software/*.c
