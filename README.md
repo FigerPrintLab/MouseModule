@@ -15,7 +15,7 @@ GPIO 4 can be tied to an LED to get visual feedback when you're recording. Same 
 
 ### Software
 
-The program is written in C and it captures all the relevant mouse vents in order to fenerate the appropriate hardware signals on spcific GPIOs. The software should be run on the miniaml version of the Pi OS (Raspberry Pi OS Lite) because of the lack of a graphical server which could behave weirdly with the mouse events. In order to compile it yuo need to install the [`pigpio` library](https://abyz.me.uk/rpi/pigpio/) which requires privileged permissions to run.
+The program is written in C and it captures all the relevant mouse events in order to generate the appropriate hardware signals on specific GPIOs (listed below). The software should be run on the minimal version of the Pi OS (Raspberry Pi OS Lite) because of the lack of a graphical server which could behave weirdly with the mouse events. In order to compile it you need to install the [`pigpio` library](https://abyz.me.uk/rpi/pigpio/) which requires privileged permissions to run.
 
 ```sh
 # clone the repository
