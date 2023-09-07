@@ -5,6 +5,8 @@
  *
  * TODO:
  *  - Handle interrupt signal
+ *  - Pass argument as pointer (more efficient than copying the whole struct)
+ *  - Should we implement a mutex for the thread variables which are handles also in erase()?
  */
 
 #include <stdio.h>
@@ -13,7 +15,8 @@
 #include <pigpio.h>
 #include "event.h"
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     FILE *devices, *mouse;
     struct input_event systemEvent;
     struct str_event myEvent;
@@ -58,10 +61,10 @@ int main(int argc, char** argv) {
 
         /* If we managed to read some bytes, print the relative events */
         if (bytes > 0) {
-            //printRaw(i, &systemEvent);
+            // printRaw(i, &systemEvent);
             setStrEvent(&systemEvent, &myEvent);
             // printHuman(i, &myEvent);
-	        //printFunctional(&myEvent, &rec, &mode);
+            // printFunctional(&myEvent, &rec, &mode);
             handle(&systemEvent);
             /* Uncomment to get the incremental number of events */
             // i++;
@@ -70,4 +73,3 @@ int main(int argc, char** argv) {
     gpioTerminate();
     return EXIT_SUCCESS;
 }
-

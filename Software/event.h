@@ -3,15 +3,14 @@
  */
 
 #ifndef EVENT_H
-    #define EVENT_H
-#endif
+#define EVENT_H
 
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <fcntl.h> 
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -19,6 +18,7 @@
 #include <linux/input.h>
 #include <regex.h>
 #include <pigpio.h>
+#include "Nokia5110LCD.h"
 
 /* GPIO & PWM parameters */
 #define PWM_0 18
@@ -29,10 +29,10 @@
 #define PB    17
 #define FREQ  PI_HW_PWM_MAX_FREQ / 100000
 #define CONST PI_HW_PWM_RANGE / (2 * MAX_POS)
+#define TRIGGER_PULSE 0.00005
 
 /*
- * Uncomment these lines to skip some events or some infos
- * from being printed
+ * Uncomment these lines to skip some events or some infos from being printed
  */
 #define NO_INDEX
 //#define NO_TIME
@@ -49,7 +49,7 @@
 #define MIN_POS -MAX_POS
 #define MAX_ATT 10
 
-/* 
+/*
  * Human readable event struct
  */
 struct str_event {
@@ -109,4 +109,7 @@ void move(const long double t, const struct input_event* event, const bool axis,
 void wheel(int* attenuation, int* offset, const long double t, const struct input_event* event, const bool* mode);
 void updatePosition(int* x, int* y, int* max, int* min, const int* attenuation, const int* offset);
 void handle(const struct input_event* event);
+void initializeDisplay(DisplayInfo* d);
+void drawPosition(DisplayInfo* d, const int* x, const int* y);
 
+#endif
